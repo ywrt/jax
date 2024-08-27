@@ -31,6 +31,7 @@ from jax._src import sharding_specs
 from jax._src import tree_util
 from jax._src import util
 from jax._src import xla_bridge
+from jax._src.internal_mesh_utils import create_device_mesh
 from jax._src.lib import xla_client as xc
 from jax._src.op_shardings import (
     are_op_shardings_equal, get_num_ways_dim_sharded, is_op_sharding_replicated)
@@ -1679,3 +1680,18 @@ def _gspmd_to_named_sharding_via_mesh(
   return create_mesh_pspec_sharding(
       mesh, parsed_pspec.get_partition_spec(), parsed_pspec,
       out_s.memory_kind)
+
+
+def make_mesh(axis_shapes: Sequence[int], axis_names: Sequence[str],
+              *, devices: Sequence[xc.Device] | None = None) -> mesh_lib.Mesh:
+  if devices is None:
+    devices = xla_bridge.devices()
+  axis_size = math.prod(axis_shapes)
+  if axis_size > len(devices):
+    raise ValueError(
+        f'Number of devices {len(devices)} must be >= the product '
+        f'of mesh_shape {axis_shapes}')
+  elif axis_size < len(devices):
+    devices = devices[:axis_size]
+  mesh_devices = create_device_mesh(axis_shapes, devices)
+  return mesh_lib.Mesh(mesh_devices, axis_names)
