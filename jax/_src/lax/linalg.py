@@ -2460,7 +2460,9 @@ batching.primitive_batchers[hessenberg_p] = _hessenberg_batching_rule
 def _hessenberg_cpu_hlo(ctx, a):
   a_aval, = ctx.avals_in
   batch_dims = a_aval.shape[:-2]
-  a, taus, info = lapack.gehrd_hlo(a_aval.dtype, a)
+  # TODO(b/344892332): Remove the conditional after the compatibility period.
+  ctx_args = (ctx,) if jaxlib_version >= (0, 4, 32) else ()
+  a, taus, info = lapack.gehrd_hlo(*ctx_args, a_aval.dtype, a)
   ok = mlir.compare_hlo(
       info, mlir.full_like_aval(ctx, 0, ShapedArray(batch_dims, np.dtype(np.int32))),
       "EQ", "SIGNED")
